@@ -17,8 +17,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Pinned Flutter: its Android Gradle Plugin still accepts the proguard file
+      # that flutter_inappwebview references. The newest stable AGP rejects it.
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.24.5'
           channel: stable
           cache: true
 
