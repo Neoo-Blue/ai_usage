@@ -1,0 +1,23 @@
+name: ai_usage
+description: Track AI subscription and API usage limits.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+# Carets pin the major each file was written against, so newer majors with
+# changed APIs are not pulled in. Bump a lower bound if CI resolution complains.
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_inappwebview: ^6.0.0
+  flutter_secure_storage: ^9.0.0
+  home_widget: ^0.6.0
+  sqflite: ^2.3.0
+  path: ^1.8.0
+  http: ^1.1.0
+  uuid: ^4.0.0
+
+flutter:
+  uses-material-design: true

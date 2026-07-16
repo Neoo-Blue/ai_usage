@@ -1,0 +1,4 @@
+analyzer:
+  errors:
+    # Analysis warnings never block the APK build; keep them non fatal.
+    use_build_context_synchronously: ignore

@@ -1,0 +1,47 @@
+name: build_apk
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # We commit only pubspec + lib. CI regenerates the android/ Gradle scaffold
+      # so it always matches the toolchain version, which avoids hand written
+      # Gradle files drifting out of sync. flutter create never overwrites lib/.
+      - name: Regenerate android platform files
+        run: flutter create --org com.example --project-name ai_usage --platforms=android .
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai_usage_apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Publish GitHub release on tag
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
