@@ -25,6 +25,33 @@ Two build notes worth knowing:
 - **Flutter is pinned to 3.24.5 in CI.** The newest Android Gradle Plugin rejects a proguard reference that `flutter_inappwebview` still uses, so the pin keeps the plugin building.
 - **The release manifest needs the `INTERNET` permission.** `flutter create` only adds it to debug and profile builds, so the release APK has no network access unless it is added. CI injects the permission after `flutter create`; without it the WebView renders blank and sync fails.
 
+## Build and sideload iOS
+
+iOS needs a macOS runner. The `build_ios` workflow (manual dispatch) regenerates `ios/`, sets the deployment target to 13, and runs `flutter build ios --no-codesign`, producing an unsigned `.ipa`. Every plugin the app uses (WebView, secure storage, home_widget, sqflite) builds for iOS.
+
+Locally (needs a Mac with Xcode):
+
+```
+flutter create --org com.example --project-name ai_usage --platforms=ios .
+flutter pub get
+flutter build ios --release --no-codesign
+```
+
+Sideload the unsigned ipa with a free Apple ID:
+
+1. Install Sideloadly (sideloadly.io) on a Mac or Windows PC.
+2. Plug in the iPhone by USB and trust the computer.
+3. Drag the ipa into Sideloadly, enter your Apple ID, and click Start. It re signs with your Apple ID and installs.
+4. On the iPhone: Settings, General, VPN and Device Management, then trust the developer profile.
+
+Free signed apps expire after 7 days; re run Sideloadly, or use AltStore for automatic refresh.
+
+The iOS home screen widget is not built, because WidgetKit shares data with the app through an App Group, and App Groups require a paid Apple Developer account. On a free Apple ID the app runs but there is no iOS widget.
+
+## The Android widget
+
+The widget UI is a Flutter widget rendered to an image (`home_widget` `renderFlutterWidget`), so all seven themes, the caution stripe bars, and the layout are pure Flutter. The native side (`android_widget/`) is thin: it loads the image, wires the refresh button and body to open the app, and records the widget size on resize. Because rendering the image needs the app in the foreground, the refresh button opens the app, which auto syncs on launch and re renders every placed widget. Usage data comes from `GET https://claude.ai/api/organizations/{orgId}/usage` (five_hour, seven_day, and per model buckets), read through the headless WebView so it clears Cloudflare.
+
 ## Test the private endpoints without building
 
 The fastest way to check whether an account exposes usage data is a browser console, which is already past Cloudflare:
