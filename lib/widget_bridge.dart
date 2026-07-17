@@ -2,33 +2,51 @@ import 'package:home_widget/home_widget.dart';
 
 import 'db.dart';
 
-// Writes a compact snapshot the native home screen widget reads, then asks
-// Android to repaint the placed widget. Safe to call often; failures swallowed.
-Future<void> updateHomeWidget() async {
+// Builds and pushes the snapshot for one placed widget, keyed by its appWidgetId,
+// based on that widget's stored account, theme, and metric selection.
+Future<void> pushWidgetSnapshot(String widgetId) async {
   try {
-    final accounts = await Db.instance.allAccounts();
-    if (accounts.isEmpty) {
-      await HomeWidget.saveWidgetData('widget_title', 'AI Usage');
-      await HomeWidget.saveWidgetData('widget_line1', 'No account yet');
-      await HomeWidget.saveWidgetData('widget_line2', 'Open the app to connect');
-    } else {
-      final a = accounts.first;
-      final metrics = await Db.instance.metricsFor(a.id);
-      final metric = metrics.isNotEmpty ? metrics.first : null;
-      await HomeWidget.saveWidgetData('widget_title', a.label);
-      await HomeWidget.saveWidgetData(
-        'widget_line1',
-        '${a.provider.name} . ${a.status.name}',
-      );
-      await HomeWidget.saveWidgetData(
-        'widget_line2',
-        metric != null ? '${metric.metricType}: ${metric.display()}' : 'Tap sync for usage',
-      );
+    final cfg = await Db.instance.widgetConfigById(widgetId);
+    if (cfg == null) return;
+
+    final account = cfg.accountId == null ? null : await Db.instance.accountById(cfg.accountId!);
+    var title = 'AI Usage';
+    var line1 = 'Not set up';
+    var line2 = 'Open the app to connect';
+
+    if (account != null) {
+      final metrics = await Db.instance.metricsFor(account.id);
+      final selected = cfg.metricTypes;
+      final shown =
+          metrics.where((m) => selected.isEmpty || selected.contains(m.metricType)).toList();
+      title = account.label;
+      line1 = '${account.provider.name} . ${account.status.name}';
+      if (shown.isNotEmpty) {
+        line2 = shown.take(2).map((m) => '${m.metricType}: ${m.display()}').join('   ');
+      } else if (account.planName != null) {
+        line2 = 'plan: ${account.planName}';
+      } else {
+        line2 = 'Tap sync for usage';
+      }
     }
+
+    await HomeWidget.saveWidgetData('widget_${widgetId}_theme', cfg.theme.name);
+    await HomeWidget.saveWidgetData('widget_${widgetId}_title', title);
+    await HomeWidget.saveWidgetData('widget_${widgetId}_line1', line1);
+    await HomeWidget.saveWidgetData('widget_${widgetId}_line2', line2);
     await HomeWidget.updateWidget(
       qualifiedAndroidName: 'com.example.ai_usage.UsageWidgetProvider',
     );
   } catch (_) {
-    // Widget not placed yet, or no widget host; nothing to do.
+    // Widget host not present; nothing to do.
   }
+}
+
+// Refresh every placed widget (called after a sync or list change).
+Future<void> refreshAllWidgets() async {
+  try {
+    for (final c in await Db.instance.allWidgetConfigs()) {
+      await pushWidgetSnapshot(c.id);
+    }
+  } catch (_) {}
 }

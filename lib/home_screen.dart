@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final a in accounts) {
       _metrics[a.id] = await Db.instance.metricsFor(a.id);
     }
-    await updateHomeWidget();
+    await refreshAllWidgets();
     if (!mounted) return;
     setState(() {
       _accounts = accounts;

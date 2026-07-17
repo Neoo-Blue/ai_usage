@@ -99,3 +99,19 @@ class MetricRow {
     return 'unavailable';
   }
 }
+
+enum WidgetTheme { minimalist, elegant, futuristic, neumorphic, retro, adaptive }
+
+class WidgetConfig {
+  final String id; // native appWidgetId as string
+  final String? accountId;
+  final WidgetTheme theme;
+  final List<String> metricTypes;
+
+  const WidgetConfig({
+    required this.id,
+    this.accountId,
+    required this.theme,
+    required this.metricTypes,
+  });
+}

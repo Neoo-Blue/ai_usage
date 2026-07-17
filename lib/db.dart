@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -157,6 +159,54 @@ class Db {
         'updated_at': DateTime.now().toIso8601String(),
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  // Widget configs (one row per placed home screen widget)
+  Future<void> upsertWidgetConfig(WidgetConfig w) async {
+    final db = await _database;
+    await db.insert(
+      'widget_configs',
+      {
+        'id': w.id,
+        'account_id': w.accountId,
+        'theme': w.theme.name,
+        'metric_types': jsonEncode(w.metricTypes),
+        'size': 'medium',
+        'created_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<WidgetConfig?> widgetConfigById(String id) async {
+    final db = await _database;
+    final rows =
+        await db.query('widget_configs', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : _widgetConfigFromRow(rows.first);
+  }
+
+  Future<List<WidgetConfig>> allWidgetConfigs() async {
+    final db = await _database;
+    final rows = await db.query('widget_configs');
+    return rows.map(_widgetConfigFromRow).toList();
+  }
+
+  Future<void> deleteWidgetConfig(String id) async {
+    final db = await _database;
+    await db.delete('widget_configs', where: 'id = ?', whereArgs: [id]);
+  }
+
+  WidgetConfig _widgetConfigFromRow(Map<String, Object?> m) {
+    final raw = m['metric_types'] as String?;
+    final metrics = (raw != null && raw.isNotEmpty)
+        ? (jsonDecode(raw) as List).cast<String>()
+        : <String>[];
+    return WidgetConfig(
+      id: m['id'] as String,
+      accountId: m['account_id'] as String?,
+      theme: enumByName(WidgetTheme.values, m['theme'] as String? ?? 'adaptive', WidgetTheme.adaptive),
+      metricTypes: metrics,
     );
   }
 }

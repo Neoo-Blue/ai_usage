@@ -47,10 +47,10 @@ jobs:
         run: |
           PKG=android/app/src/main/kotlin/com/example/ai_usage
           mkdir -p "$PKG" android/app/src/main/res/layout android/app/src/main/res/xml android/app/src/main/res/drawable
-          cp android_widget/UsageWidgetProvider.kt "$PKG/"
+          cp android_widget/*.kt "$PKG/"
           cp android_widget/usage_widget.xml android/app/src/main/res/layout/
           cp android_widget/usage_widget_info.xml android/app/src/main/res/xml/
-          cp android_widget/widget_bg.xml android/app/src/main/res/drawable/
+          cp android_widget/widget_bg.xml android_widget/wbg_*.xml android/app/src/main/res/drawable/
           node android_widget/register_widget.js
 
       - name: Resolve dependencies
