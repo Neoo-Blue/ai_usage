@@ -278,8 +278,31 @@ class AnthropicSubscriptionClient implements SyncClient {
     if (usage is Map) {
       _addBucket(metrics, usage['five_hour'], 'session');
       _addBucket(metrics, usage['seven_day'], 'weekly');
-      _addBucket(metrics, usage['seven_day_opus'], 'weekly_opus');
-      _addBucket(metrics, usage['seven_day_sonnet'], 'weekly_sonnet');
+      // Emit every per model weekly bucket dynamically, whatever it is named.
+      const skip = {
+        'five_hour',
+        'seven_day',
+        'seven_day_oauth_apps',
+        'seven_day_cowork',
+        'extra_usage',
+      };
+      var idx = 0;
+      for (final entry in usage.entries) {
+        final k = entry.key.toString();
+        if (!k.startsWith('seven_day_') || skip.contains(k)) continue;
+        final bucket = entry.value;
+        if (bucket is! Map) continue;
+        final util = bucket['utilization'];
+        if (util is! num) continue;
+        metrics.add(ParsedMetric('model${idx}_used', numValue: util.toDouble(), unit: 'percent'));
+        final reset = bucket['resets_at'];
+        if (reset is String && reset.isNotEmpty) {
+          metrics.add(ParsedMetric('model${idx}_resets_at', textValue: reset));
+        }
+        metrics.add(ParsedMetric('model${idx}_label', textValue: _modelLabel(k)));
+        idx++;
+        if (idx >= 4) break;
+      }
     }
     return metrics;
   }
@@ -302,6 +325,19 @@ class AnthropicSubscriptionClient implements SyncClient {
     if (c.contains('claude_pro')) return 'Pro';
     if (billing == 'stripe_subscription') return 'Subscription';
     return billing ?? 'Subscription';
+  }
+
+  String _modelLabel(String key) {
+    final m = key.replaceFirst('seven_day_', '');
+    const named = {
+      'opus': 'Fable',
+      'fable': 'Fable',
+      'sonnet': 'Sonnet',
+      'haiku': 'Haiku',
+      'mythos': 'Mythos',
+    };
+    final label = named[m] ?? (m.isEmpty ? 'model' : '${m[0].toUpperCase()}${m.substring(1)}');
+    return 'Weekly, $label';
   }
 }
 

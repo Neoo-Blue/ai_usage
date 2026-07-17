@@ -295,8 +295,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               _bar('Current session', _num(metrics, 'session_used'), _text(metrics, 'session_resets_at')),
               _bar('Weekly, all models', _num(metrics, 'weekly_used'), _text(metrics, 'weekly_resets_at')),
-              _bar('Weekly, Fable', _num(metrics, 'weekly_opus_used'), _text(metrics, 'weekly_opus_resets_at')),
-              _bar('Weekly, Sonnet', _num(metrics, 'weekly_sonnet_used'), _text(metrics, 'weekly_sonnet_resets_at')),
+              for (int i = 0; i < 4; i++)
+                if (_num(metrics, 'model${i}_used') != null)
+                  _bar(_text(metrics, 'model${i}_label') ?? 'Weekly',
+                      _num(metrics, 'model${i}_used'), _text(metrics, 'model${i}_resets_at')),
             ],
           ),
         ),

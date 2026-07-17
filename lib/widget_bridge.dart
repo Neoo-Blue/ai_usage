@@ -49,8 +49,12 @@ Future<void> pushWidgetSnapshot(String widgetId) async {
 
       add('Current session', 'session_used', 'session_resets_at');
       add('Weekly, all models', 'weekly_used', 'weekly_resets_at');
-      add('Weekly, Fable', 'weekly_opus_used', 'weekly_opus_resets_at');
-      add('Weekly, Sonnet', 'weekly_sonnet_used', 'weekly_sonnet_resets_at');
+      for (var i = 0; i < 4; i++) {
+        final pct = _num(metrics, 'model${i}_used');
+        if (pct == null) break;
+        final label = _text(metrics, 'model${i}_label') ?? 'Weekly';
+        bars.add(UsageBarData(label, pct, resetLabel(_text(metrics, 'model${i}_resets_at'))));
+      }
       if (bars.isEmpty) subtitle ??= (plan != null ? 'plan: $plan' : 'Tap sync for usage');
     }
 
@@ -61,6 +65,7 @@ Future<void> pushWidgetSnapshot(String widgetId) async {
       buildWidgetCanvas(theme: cfg.theme, title: title, subtitle: subtitle, bars: bars),
       key: 'widget_${widgetId}_img',
       logicalSize: Size(340, height),
+      pixelRatio: 4.0,
     );
     await HomeWidget.updateWidget(
       qualifiedAndroidName: 'com.example.ai_usage.UsageWidgetProvider',
