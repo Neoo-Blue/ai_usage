@@ -7,6 +7,7 @@ import 'db.dart';
 import 'models.dart';
 import 'providers.dart';
 import 'sync.dart';
+import 'widget_bridge.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final a in accounts) {
       _metrics[a.id] = await Db.instance.metricsFor(a.id);
     }
+    await updateHomeWidget();
     if (!mounted) return;
     setState(() {
       _accounts = accounts;
