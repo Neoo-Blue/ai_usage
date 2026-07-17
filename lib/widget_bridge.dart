@@ -1,67 +1,75 @@
+import 'package:flutter/widgets.dart';
 import 'package:home_widget/home_widget.dart';
 
 import 'db.dart';
+import 'models.dart';
+import 'widget_canvas.dart';
 
-// Builds and pushes the snapshot for one placed widget, keyed by its appWidgetId,
-// based on that widget's stored account, theme, and metric selection.
+double? _num(List<MetricRow> ms, String type) {
+  for (final m in ms) {
+    if (m.metricType == type) return m.numValue;
+  }
+  return null;
+}
+
+String? _text(List<MetricRow> ms, String type) {
+  for (final m in ms) {
+    if (m.metricType == type) return m.textValue;
+  }
+  return null;
+}
+
+// Renders the widget as a Flutter image (full design control), then tells the
+// native widget to reload. Keyed per appWidgetId.
 Future<void> pushWidgetSnapshot(String widgetId) async {
   try {
     final cfg = await Db.instance.widgetConfigById(widgetId);
     if (cfg == null) return;
-
     final account = cfg.accountId == null ? null : await Db.instance.accountById(cfg.accountId!);
+
     var title = 'AI Usage';
-    var line1 = 'Not set up';
-    var line2 = 'Open the app to connect';
-    var bar = 0;
+    String? subtitle = 'Open the app to connect';
+    final bars = <UsageBarData>[];
 
     if (account != null) {
       final metrics = await Db.instance.metricsFor(account.id);
-      final selected = cfg.metricTypes;
-      String? email;
-      double? sessionPct, weeklyPct;
-      for (final m in metrics) {
-        if (m.metricType == 'account') email = m.textValue;
-        if (m.metricType == 'session_used') sessionPct = m.numValue;
-        if (m.metricType == 'weekly_used') weeklyPct = m.numValue;
-      }
       title = account.label;
-      line1 = (email != null && email.isNotEmpty)
-          ? email
-          : '${account.provider.name} . ${account.status.name}';
-      if (sessionPct != null) {
-        bar = sessionPct.round().clamp(0, 100).toInt();
-        line2 = 'session ${sessionPct.round()}%'
-            '${weeklyPct != null ? '   weekly ${weeklyPct.round()}%' : ''}';
-      } else {
-        final shown = metrics
-            .where((m) =>
-                m.metricType != 'account' && (selected.isEmpty || selected.contains(m.metricType)))
-            .toList();
-        if (shown.isNotEmpty) {
-          line2 = shown.take(2).map((m) => '${m.metricType}: ${m.display()}').join('   ');
-        } else if (account.planName != null) {
-          line2 = 'plan: ${account.planName}';
-        } else {
-          line2 = 'Tap sync for usage';
-        }
+      final email = _text(metrics, 'account');
+      final plan = _text(metrics, 'plan');
+      subtitle = switch (cfg.headerMode) {
+        WidgetHeaderMode.email => email ?? (plan != null ? 'plan: $plan' : null),
+        WidgetHeaderMode.plan => plan != null ? 'plan: $plan' : null,
+        WidgetHeaderMode.nickname => null,
+      };
+      void add(String label, String usedKey, String resetKey) {
+        final pct = _num(metrics, usedKey);
+        if (pct == null) return;
+        bars.add(UsageBarData(label, pct, resetLabel(_text(metrics, resetKey))));
       }
+
+      add('Current session', 'session_used', 'session_resets_at');
+      add('Weekly, all models', 'weekly_used', 'weekly_resets_at');
+      add('Weekly, Fable', 'weekly_opus_used', 'weekly_opus_resets_at');
+      add('Weekly, Sonnet', 'weekly_sonnet_used', 'weekly_sonnet_resets_at');
+      if (bars.isEmpty) subtitle ??= (plan != null ? 'plan: $plan' : 'Tap sync for usage');
     }
 
-    await HomeWidget.saveWidgetData('widget_${widgetId}_theme', cfg.theme.name);
-    await HomeWidget.saveWidgetData('widget_${widgetId}_title', title);
-    await HomeWidget.saveWidgetData('widget_${widgetId}_line1', line1);
-    await HomeWidget.saveWidgetData('widget_${widgetId}_line2', line2);
-    await HomeWidget.saveWidgetData('widget_${widgetId}_bar', bar.toString());
+    final hasSub = subtitle != null && subtitle.isNotEmpty;
+    final height = 60.0 + (hasSub ? 14 : 0) + (bars.isEmpty ? 26 : bars.length * 52);
+
+    await HomeWidget.renderFlutterWidget(
+      buildWidgetCanvas(theme: cfg.theme, title: title, subtitle: subtitle, bars: bars),
+      key: 'widget_${widgetId}_img',
+      logicalSize: Size(340, height),
+    );
     await HomeWidget.updateWidget(
       qualifiedAndroidName: 'com.example.ai_usage.UsageWidgetProvider',
     );
   } catch (_) {
-    // Widget host not present; nothing to do.
+    // Widget host not present or render unavailable; nothing to do.
   }
 }
 
-// Refresh every placed widget (called after a sync or list change).
 Future<void> refreshAllWidgets() async {
   try {
     for (final c in await Db.instance.allWidgetConfigs()) {

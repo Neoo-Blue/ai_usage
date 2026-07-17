@@ -21,6 +21,7 @@ class _WidgetConfigScreenState extends State<WidgetConfigScreen> {
   List<Account> _accounts = [];
   Account? _account;
   WidgetTheme _theme = WidgetTheme.adaptive;
+  WidgetHeaderMode _headerMode = WidgetHeaderMode.nickname;
   final _metrics = <String>{'plan'};
   bool _loading = true;
 
@@ -56,6 +57,7 @@ class _WidgetConfigScreenState extends State<WidgetConfigScreen> {
       id: widget.widgetId,
       accountId: _account!.id,
       theme: _theme,
+      headerMode: _headerMode,
       metricTypes: _metrics.toList(),
     ));
     await pushWidgetSnapshot(widget.widgetId);
@@ -69,6 +71,7 @@ class _WidgetConfigScreenState extends State<WidgetConfigScreen> {
         WidgetTheme.neumorphic => 'Neumorphic',
         WidgetTheme.retro => 'Retro',
         WidgetTheme.adaptive => 'Adaptive (Material You)',
+        WidgetTheme.caution => 'Caution (hazard stripes)',
       };
 
   @override
@@ -120,14 +123,26 @@ class _WidgetConfigScreenState extends State<WidgetConfigScreen> {
                           onChanged: (v) => setState(() => _theme = v!),
                         ),
                       const Divider(),
-                      const Text('Metrics', style: TextStyle(fontWeight: FontWeight.bold)),
-                      for (final e in _available.entries)
-                        CheckboxListTile(
-                          value: _metrics.contains(e.key),
-                          title: Text(e.value),
-                          onChanged: (on) => setState(() =>
-                              on == true ? _metrics.add(e.key) : _metrics.remove(e.key)),
-                        ),
+                      const Text('Header', style: TextStyle(fontWeight: FontWeight.bold)),
+                      RadioListTile<WidgetHeaderMode>(
+                        value: WidgetHeaderMode.nickname,
+                        groupValue: _headerMode,
+                        title: const Text('Nickname only'),
+                        subtitle: const Text('Hides your email'),
+                        onChanged: (v) => setState(() => _headerMode = v!),
+                      ),
+                      RadioListTile<WidgetHeaderMode>(
+                        value: WidgetHeaderMode.plan,
+                        groupValue: _headerMode,
+                        title: const Text('Nickname and plan'),
+                        onChanged: (v) => setState(() => _headerMode = v!),
+                      ),
+                      RadioListTile<WidgetHeaderMode>(
+                        value: WidgetHeaderMode.email,
+                        groupValue: _headerMode,
+                        title: const Text('Nickname and email'),
+                        onChanged: (v) => setState(() => _headerMode = v!),
+                      ),
                       const SizedBox(height: 20),
                       FilledButton(onPressed: _save, child: const Text('Add widget')),
                     ],

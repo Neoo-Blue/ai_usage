@@ -1,45 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@drawable/widget_bg"
-    android:padding="14dp">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/widget_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="AI Usage"
-        android:textStyle="bold"
-        android:textSize="15sp"
-        android:textColor="#111111" />
-
-    <TextView
-        android:id="@+id/widget_line1"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="No account yet"
-        android:textSize="13sp"
-        android:textColor="#333333" />
-
-    <TextView
-        android:id="@+id/widget_line2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="Open the app to connect"
-        android:textSize="12sp"
-        android:textColor="#666666" />
-
-    <ProgressBar
-        android:id="@+id/widget_bar"
-        style="?android:attr/progressBarStyleHorizontal"
+    <ImageView
+        android:id="@+id/widget_image"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:max="100"
-        android:progress="0" />
-</LinearLayout>
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:adjustViewBounds="true"
+        android:contentDescription="AI usage" />
+</FrameLayout>

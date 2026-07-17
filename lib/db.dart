@@ -21,7 +21,7 @@ class Db {
     final dir = await getDatabasesPath();
     return openDatabase(
       p.join(dir, 'ai_usage.db'),
-      version: 1,
+      version: 2,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, _) async {
         await db.execute('''
@@ -59,10 +59,17 @@ class Db {
             id TEXT PRIMARY KEY,
             account_id TEXT,
             theme TEXT NOT NULL,
+            header_mode TEXT NOT NULL DEFAULT 'nickname',
             metric_types TEXT NOT NULL,
             size TEXT NOT NULL DEFAULT 'medium',
             created_at TEXT NOT NULL
           )''');
+      },
+      onUpgrade: (db, from, to) async {
+        if (from < 2) {
+          await db.execute(
+              "ALTER TABLE widget_configs ADD COLUMN header_mode TEXT NOT NULL DEFAULT 'nickname'");
+        }
       },
     );
   }
@@ -171,6 +178,7 @@ class Db {
         'id': w.id,
         'account_id': w.accountId,
         'theme': w.theme.name,
+        'header_mode': w.headerMode.name,
         'metric_types': jsonEncode(w.metricTypes),
         'size': 'medium',
         'created_at': DateTime.now().toIso8601String(),
@@ -206,6 +214,8 @@ class Db {
       id: m['id'] as String,
       accountId: m['account_id'] as String?,
       theme: enumByName(WidgetTheme.values, m['theme'] as String? ?? 'adaptive', WidgetTheme.adaptive),
+      headerMode: enumByName(
+          WidgetHeaderMode.values, m['header_mode'] as String? ?? 'nickname', WidgetHeaderMode.nickname),
       metricTypes: metrics,
     );
   }

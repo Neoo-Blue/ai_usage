@@ -100,18 +100,22 @@ class MetricRow {
   }
 }
 
-enum WidgetTheme { minimalist, elegant, futuristic, neumorphic, retro, adaptive }
+enum WidgetTheme { minimalist, elegant, futuristic, neumorphic, retro, adaptive, caution }
+
+enum WidgetHeaderMode { email, plan, nickname }
 
 class WidgetConfig {
   final String id; // native appWidgetId as string
   final String? accountId;
   final WidgetTheme theme;
+  final WidgetHeaderMode headerMode;
   final List<String> metricTypes;
 
   const WidgetConfig({
     required this.id,
     this.accountId,
     required this.theme,
+    this.headerMode = WidgetHeaderMode.nickname,
     required this.metricTypes,
   });
 }

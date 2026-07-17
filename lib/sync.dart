@@ -278,7 +278,8 @@ class AnthropicSubscriptionClient implements SyncClient {
     if (usage is Map) {
       _addBucket(metrics, usage['five_hour'], 'session');
       _addBucket(metrics, usage['seven_day'], 'weekly');
-      _addBucket(metrics, usage['seven_day_opus'] ?? usage['seven_day_sonnet'], 'weekly_model');
+      _addBucket(metrics, usage['seven_day_opus'], 'weekly_opus');
+      _addBucket(metrics, usage['seven_day_sonnet'], 'weekly_sonnet');
     }
     return metrics;
   }
