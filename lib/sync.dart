@@ -237,12 +237,14 @@ class AnthropicSubscriptionClient implements SyncClient {
       warmupUrl: 'https://claude.ai/',
       fetchBody: '''
         const out = { ok: true };
+        let orgId = null;
         try {
           const r = await fetch('/api/organizations', { credentials: 'include' });
           if (r.ok) {
             const orgs = await r.json();
             const org = Array.isArray(orgs) && orgs.length ? orgs[0] : null;
             if (org) {
+              orgId = org.uuid || null;
               out.billing = org.billing_type || null;
               out.caps = (org.capabilities || []).join(',');
             }
@@ -255,6 +257,12 @@ class AnthropicSubscriptionClient implements SyncClient {
           if (!acct) { const a2 = await fetch('/api/account', { credentials: 'include' }); if (a2.ok) acct = await a2.json(); }
           if (acct) out.email = acct.email_address || acct.email || null;
         } catch (e) {}
+        try {
+          if (orgId) {
+            const u = await fetch('/api/organizations/' + orgId + '/usage', { credentials: 'include' });
+            if (u.ok) out.usage = await u.json();
+          }
+        } catch (e) {}
         return out;
       ''',
     );
@@ -262,10 +270,29 @@ class AnthropicSubscriptionClient implements SyncClient {
     final billing = data['billing'] as String?;
     final caps = (data['caps'] as String?) ?? '';
     final email = data['email'] as String?;
-    return [
+    final metrics = <ParsedMetric>[
       ParsedMetric('plan', textValue: _cleanPlan(billing, caps)),
       if (email != null && email.isNotEmpty) ParsedMetric('account', textValue: email),
     ];
+    final usage = data['usage'];
+    if (usage is Map) {
+      _addBucket(metrics, usage['five_hour'], 'session');
+      _addBucket(metrics, usage['seven_day'], 'weekly');
+      _addBucket(metrics, usage['seven_day_opus'] ?? usage['seven_day_sonnet'], 'weekly_model');
+    }
+    return metrics;
+  }
+
+  void _addBucket(List<ParsedMetric> out, Object? bucket, String prefix) {
+    if (bucket is! Map) return;
+    final util = bucket['utilization'];
+    final reset = bucket['resets_at'];
+    if (util is num) {
+      out.add(ParsedMetric('${prefix}_used', numValue: util.toDouble(), unit: 'percent'));
+    }
+    if (reset is String && reset.isNotEmpty) {
+      out.add(ParsedMetric('${prefix}_resets_at', textValue: reset));
+    }
   }
 
   String _cleanPlan(String? billing, String caps) {

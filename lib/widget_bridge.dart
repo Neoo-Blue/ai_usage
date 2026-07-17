@@ -13,29 +13,38 @@ Future<void> pushWidgetSnapshot(String widgetId) async {
     var title = 'AI Usage';
     var line1 = 'Not set up';
     var line2 = 'Open the app to connect';
+    var bar = 0;
 
     if (account != null) {
       final metrics = await Db.instance.metricsFor(account.id);
       final selected = cfg.metricTypes;
-      // The synced email (if any) headlines line1; it is not a selectable metric.
       String? email;
+      double? sessionPct, weeklyPct;
       for (final m in metrics) {
         if (m.metricType == 'account') email = m.textValue;
+        if (m.metricType == 'session_used') sessionPct = m.numValue;
+        if (m.metricType == 'weekly_used') weeklyPct = m.numValue;
       }
-      final shown = metrics
-          .where((m) =>
-              m.metricType != 'account' && (selected.isEmpty || selected.contains(m.metricType)))
-          .toList();
       title = account.label;
       line1 = (email != null && email.isNotEmpty)
           ? email
           : '${account.provider.name} . ${account.status.name}';
-      if (shown.isNotEmpty) {
-        line2 = shown.take(2).map((m) => '${m.metricType}: ${m.display()}').join('   ');
-      } else if (account.planName != null) {
-        line2 = 'plan: ${account.planName}';
+      if (sessionPct != null) {
+        bar = sessionPct.round().clamp(0, 100).toInt();
+        line2 = 'session ${sessionPct.round()}%'
+            '${weeklyPct != null ? '   weekly ${weeklyPct.round()}%' : ''}';
       } else {
-        line2 = 'Tap sync for usage';
+        final shown = metrics
+            .where((m) =>
+                m.metricType != 'account' && (selected.isEmpty || selected.contains(m.metricType)))
+            .toList();
+        if (shown.isNotEmpty) {
+          line2 = shown.take(2).map((m) => '${m.metricType}: ${m.display()}').join('   ');
+        } else if (account.planName != null) {
+          line2 = 'plan: ${account.planName}';
+        } else {
+          line2 = 'Tap sync for usage';
+        }
       }
     }
 
@@ -43,6 +52,7 @@ Future<void> pushWidgetSnapshot(String widgetId) async {
     await HomeWidget.saveWidgetData('widget_${widgetId}_title', title);
     await HomeWidget.saveWidgetData('widget_${widgetId}_line1', line1);
     await HomeWidget.saveWidgetData('widget_${widgetId}_line2', line2);
+    await HomeWidget.saveWidgetData('widget_${widgetId}_bar', bar.toString());
     await HomeWidget.updateWidget(
       qualifiedAndroidName: 'com.example.ai_usage.UsageWidgetProvider',
     );

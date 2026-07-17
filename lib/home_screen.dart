@@ -184,43 +184,121 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  double? _num(List<MetricRow> ms, String type) {
+    for (final m in ms) {
+      if (m.metricType == type) return m.numValue;
+    }
+    return null;
+  }
+
+  String? _text(List<MetricRow> ms, String type) {
+    for (final m in ms) {
+      if (m.metricType == type) return m.textValue;
+    }
+    return null;
+  }
+
+  String _resetLabel(String? iso) {
+    if (iso == null || iso.isEmpty) return '';
+    final t = DateTime.tryParse(iso)?.toLocal();
+    if (t == null) return '';
+    final diff = t.difference(DateTime.now());
+    if (diff.inSeconds <= 0) return 'Resets soon';
+    if (diff.inHours < 24) {
+      final h = diff.inHours;
+      final m = diff.inMinutes % 60;
+      return h > 0 ? 'Resets in $h hr $m min' : 'Resets in $m min';
+    }
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final hh = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final ampm = t.hour < 12 ? 'AM' : 'PM';
+    final mm = t.minute.toString().padLeft(2, '0');
+    return 'Resets ${days[t.weekday - 1]} $hh:$mm $ampm';
+  }
+
+  Widget _bar(String label, double? pct, String? resetIso) {
+    if (pct == null) return const SizedBox.shrink();
+    final v = (pct / 100).clamp(0.0, 1.0);
+    final reset = _resetLabel(resetIso);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              Text('${pct.round()}% used', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(value: v, minHeight: 7),
+          ),
+          if (reset.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(reset, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _accountTile(Account a) {
-    final metrics = _metrics[a.id] ?? const [];
+    final metrics = _metrics[a.id] ?? const <MetricRow>[];
     final busy = _syncing.contains(a.id);
+    final email = _text(metrics, 'account');
+    final plan = _text(metrics, 'plan');
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      child: ListTile(
-        title: Text(a.label),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${a.provider.name} . ${a.kind.name} . ${a.status.name}'),
-            if (metrics.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  metrics.map((m) => '${m.metricType}: ${m.display()}').join('\n'),
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
-            if (a.lastSyncAt != null)
-              Text('Last synced ${a.lastSyncAt}', style: const TextStyle(fontSize: 11)),
-          ],
-        ),
-        isThreeLine: true,
-        trailing: busy
-            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-            : PopupMenuButton<String>(
-                onSelected: (v) {
-                  if (v == 'sync') _sync(a);
-                  if (v == 'delete') _delete(a);
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'sync', child: Text('Sync now')),
-                  PopupMenuItem(value: 'delete', child: Text('Delete')),
+      child: InkWell(
+        onTap: busy ? null : () => _sync(a),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(a.label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(
+                          email ?? '${a.provider.name} . ${a.status.name}',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        if (plan != null)
+                          Text('plan: $plan', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  if (busy)
+                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  else
+                    PopupMenuButton<String>(
+                      onSelected: (val) {
+                        if (val == 'sync') _sync(a);
+                        if (val == 'delete') _delete(a);
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'sync', child: Text('Sync now')),
+                        PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      ],
+                    ),
                 ],
               ),
-        onTap: busy ? null : () => _sync(a),
+              _bar('Current session', _num(metrics, 'session_used'), _text(metrics, 'session_resets_at')),
+              _bar('Weekly, all models', _num(metrics, 'weekly_used'), _text(metrics, 'weekly_resets_at')),
+              _bar('Weekly, Fable', _num(metrics, 'weekly_model_used'), _text(metrics, 'weekly_model_resets_at')),
+            ],
+          ),
+        ),
       ),
     );
   }

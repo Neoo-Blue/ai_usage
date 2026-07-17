@@ -31,6 +31,8 @@ class UsageWidgetProvider : HomeWidgetProvider() {
                 R.id.widget_line2,
                 widgetData.getString("widget_${widgetId}_line2", "Remove and re-add to configure")
             )
+            val barPct = widgetData.getString("widget_${widgetId}_bar", "0")?.toIntOrNull() ?: 0
+            views.setProgressBar(R.id.widget_bar, 100, barPct, false)
             applyTheme(context, views, theme)
             appWidgetManager.updateAppWidget(widgetId, views)
         }
