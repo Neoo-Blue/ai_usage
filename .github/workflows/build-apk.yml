@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed for softprops/action-gh-release to publish a Release
     steps:
       - uses: actions/checkout@v4
 
