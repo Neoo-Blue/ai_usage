@@ -106,6 +106,10 @@ class _CaptureScreenState extends State<CaptureScreen> {
         initialSettings: InAppWebViewSettings(
           javaScriptEnabled: true,
           thirdPartyCookiesEnabled: true,
+          // Present a normal Chrome identity. Google blocks its OAuth login in
+          // WebViews that look like WebViews (a "wv" token or missing Chrome UA).
+          userAgent:
+              'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
         ),
         onWebViewCreated: (c) => _controller = c,
         onLoadStop: (_, __) => _tryCapture(),

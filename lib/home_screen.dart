@@ -46,14 +46,21 @@ class _HomeScreenState extends State<HomeScreen> {
       context,
       MaterialPageRoute(builder: (_) => CaptureScreen(config: config)),
     );
-    if (captured == null || captured.bundle.isEmpty) return;
+    if (!mounted || captured == null || captured.bundle.isEmpty) return;
+
+    // Repaint once the WebView platform view is gone, so the dialog and the
+    // list do not sit over a stale black surface on some devices.
+    setState(() {});
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    if (!mounted) return;
 
     final label = await _askLabel(
       defaultLabel: captured.email ?? '${config.displayName} account',
     );
-    if (label == null) return;
+    if (!mounted || label == null) return;
 
     await AccountRepository.connectFromCapture(captured: captured, label: label);
+    if (!mounted) return;
     await _reload();
   }
 
