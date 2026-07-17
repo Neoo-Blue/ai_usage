@@ -25,7 +25,22 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _reload();
+    _boot();
+  }
+
+  // Refresh on launch (also how the widget's refresh button works: it opens the
+  // app, which syncs and re-renders the widgets).
+  Future<void> _boot() async {
+    await _reload();
+    if (!mounted) return;
+    final now = DateTime.now();
+    final stale = _accounts.isNotEmpty &&
+        _accounts.any((a) => a.lastSyncAt == null || now.difference(a.lastSyncAt!).inSeconds > 60);
+    if (stale) {
+      await syncAll();
+      if (!mounted) return;
+      await _reload();
+    }
   }
 
   Future<void> _reload() async {

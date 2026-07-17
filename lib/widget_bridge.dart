@@ -58,13 +58,28 @@ Future<void> pushWidgetSnapshot(String widgetId) async {
       if (bars.isEmpty) subtitle ??= (plan != null ? 'plan: $plan' : 'Tap sync for usage');
     }
 
+    // Fit the render to the widget's actual size when known (recorded on resize),
+    // and drop the least important bars if the widget is short.
+    var baseWidth = 340.0;
+    final wStr = await HomeWidget.getWidgetData<String>('widget_${widgetId}_w');
+    final w = double.tryParse(wStr ?? '');
+    if (w != null && w > 80) baseWidth = w.clamp(150, 620).toDouble();
+
+    var shown = bars;
+    final hStr = await HomeWidget.getWidgetData<String>('widget_${widgetId}_h');
+    final hDp = double.tryParse(hStr ?? '');
+    if (hDp != null && hDp > 0 && bars.isNotEmpty) {
+      final capacity = ((hDp - 44) / 46).floor().clamp(1, bars.length).toInt();
+      if (capacity < bars.length) shown = bars.sublist(0, capacity);
+    }
+
     final hasSub = subtitle != null && subtitle.isNotEmpty;
-    final height = 60.0 + (hasSub ? 14 : 0) + (bars.isEmpty ? 26 : bars.length * 52);
+    final height = 60.0 + (hasSub ? 14 : 0) + (shown.isEmpty ? 26 : shown.length * 52);
 
     await HomeWidget.renderFlutterWidget(
-      buildWidgetCanvas(theme: cfg.theme, title: title, subtitle: subtitle, bars: bars),
+      buildWidgetCanvas(theme: cfg.theme, title: title, subtitle: subtitle, bars: shown),
       key: 'widget_${widgetId}_img',
-      logicalSize: Size(340, height),
+      logicalSize: Size(baseWidth, height),
       pixelRatio: 4.0,
     );
     await HomeWidget.updateWidget(

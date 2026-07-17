@@ -11,4 +11,15 @@
         android:scaleType="fitCenter"
         android:adjustViewBounds="true"
         android:contentDescription="AI usage" />
+
+    <ImageView
+        android:id="@+id/widget_refresh"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="8dp"
+        android:padding="5dp"
+        android:background="@drawable/refresh_bg"
+        android:src="@drawable/ic_widget_refresh"
+        android:contentDescription="Refresh" />
 </FrameLayout>
