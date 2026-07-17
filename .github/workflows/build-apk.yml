@@ -33,6 +33,15 @@ jobs:
       - name: Regenerate android platform files
         run: flutter create --org com.example --project-name ai_usage --platforms=android .
 
+      # flutter create only puts INTERNET in the debug/profile manifests, so a
+      # release APK has no network access (blank WebView, failed sync) without this.
+      - name: Add INTERNET permission for release
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' "$M" || \
+            perl -0777 -pi -e 's{(<application)}{<uses-permission android:name="android.permission.INTERNET"/>\n    $1}' "$M"
+          grep -n 'uses-permission' "$M" || echo "no uses-permission found"
+
       - name: Resolve dependencies
         run: flutter pub get
 
