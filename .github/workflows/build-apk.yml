@@ -27,9 +27,8 @@ jobs:
           channel: stable
           cache: true
 
-      # We commit only pubspec + lib. CI regenerates the android/ Gradle scaffold
-      # so it always matches the toolchain version, which avoids hand written
-      # Gradle files drifting out of sync. flutter create never overwrites lib/.
+      # We commit only pubspec + lib + android_widget. CI regenerates android/ so
+      # the Gradle scaffold matches the toolchain. flutter create never overwrites lib/.
       - name: Regenerate android platform files
         run: flutter create --org com.example --project-name ai_usage --platforms=android .
 
@@ -43,7 +42,7 @@ jobs:
           grep -n 'uses-permission' "$M" || echo "no uses-permission found"
 
       # The native home screen widget lives in android_widget/ and is copied into
-      # the regenerated android/ tree, then registered in the manifest.
+      # the regenerated android/ tree, then registered in the manifest by a script.
       - name: Add home screen widget (native)
         run: |
           PKG=android/app/src/main/kotlin/com/example/ai_usage
@@ -52,23 +51,7 @@ jobs:
           cp android_widget/usage_widget.xml android/app/src/main/res/layout/
           cp android_widget/usage_widget_info.xml android/app/src/main/res/xml/
           cp android_widget/widget_bg.xml android/app/src/main/res/drawable/
-          node -e '
-            const fs = require("fs");
-            const p = "android/app/src/main/AndroidManifest.xml";
-            let m = fs.readFileSync(p, "utf8");
-            if (!m.includes("UsageWidgetProvider")) {
-              const rec = `        <receiver android:name=".UsageWidgetProvider" android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/usage_widget_info" />
-        </receiver>
-    </application>`;
-              m = m.replace("</application>", rec);
-              fs.writeFileSync(p, m);
-            }
-            console.log(m.includes("UsageWidgetProvider") ? "widget receiver registered" : "FAILED to register receiver");
-          '
+          node android_widget/register_widget.js
 
       - name: Resolve dependencies
         run: flutter pub get
