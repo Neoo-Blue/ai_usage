@@ -17,10 +17,19 @@ Future<void> pushWidgetSnapshot(String widgetId) async {
     if (account != null) {
       final metrics = await Db.instance.metricsFor(account.id);
       final selected = cfg.metricTypes;
-      final shown =
-          metrics.where((m) => selected.isEmpty || selected.contains(m.metricType)).toList();
+      // The synced email (if any) headlines line1; it is not a selectable metric.
+      String? email;
+      for (final m in metrics) {
+        if (m.metricType == 'account') email = m.textValue;
+      }
+      final shown = metrics
+          .where((m) =>
+              m.metricType != 'account' && (selected.isEmpty || selected.contains(m.metricType)))
+          .toList();
       title = account.label;
-      line1 = '${account.provider.name} . ${account.status.name}';
+      line1 = (email != null && email.isNotEmpty)
+          ? email
+          : '${account.provider.name} . ${account.status.name}';
       if (shown.isNotEmpty) {
         line2 = shown.take(2).map((m) => '${m.metricType}: ${m.display()}').join('   ');
       } else if (account.planName != null) {

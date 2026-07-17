@@ -200,13 +200,28 @@ class OpenAiSubscriptionClient implements SyncClient {
           const s = await fetch('/api/auth/session', { credentials: 'include' });
           if (!s.ok) return { ok: false };
           const sj = await s.json();
-          // No stable public messages remaining endpoint; return what is real.
-          return { ok: true, plan: (sj.user && sj.user.plan) || 'Plus' };
+          const u = sj.user || {};
+          // No stable public messages remaining endpoint; return the reliable bits.
+          return { ok: true, plan: (u.plan_type || u.plan || 'Plus'), email: u.email || null };
         } catch (e) { return { ok: false }; }
       ''',
     );
-    final plan = (data is Map) ? data['plan'] as String? : null;
-    return [if (plan != null) ParsedMetric('plan', textValue: plan)];
+    if (data is! Map) return const [];
+    final plan = data['plan'] as String?;
+    final email = data['email'] as String?;
+    return [
+      if (plan != null) ParsedMetric('plan', textValue: _cleanOpenAiPlan(plan)),
+      if (email != null && email.isNotEmpty) ParsedMetric('account', textValue: email),
+    ];
+  }
+
+  String _cleanOpenAiPlan(String p) {
+    final l = p.toLowerCase();
+    if (l.contains('pro')) return 'Pro';
+    if (l.contains('team')) return 'Team';
+    if (l.contains('plus')) return 'Plus';
+    if (l.contains('free')) return 'Free';
+    return p;
   }
 }
 
@@ -221,17 +236,44 @@ class AnthropicSubscriptionClient implements SyncClient {
       },
       warmupUrl: 'https://claude.ai/',
       fetchBody: '''
+        const out = { ok: true };
         try {
           const r = await fetch('/api/organizations', { credentials: 'include' });
-          if (!r.ok) return { ok: false };
-          const orgs = await r.json();
-          const org = Array.isArray(orgs) && orgs.length ? orgs[0] : null;
-          return { ok: true, plan: org ? (org.billing_type || 'Pro') : 'Pro' };
-        } catch (e) { return { ok: false }; }
+          if (r.ok) {
+            const orgs = await r.json();
+            const org = Array.isArray(orgs) && orgs.length ? orgs[0] : null;
+            if (org) {
+              out.billing = org.billing_type || null;
+              out.caps = (org.capabilities || []).join(',');
+            }
+          }
+        } catch (e) {}
+        try {
+          let acct = null;
+          const b = await fetch('/api/bootstrap', { credentials: 'include' });
+          if (b.ok) { const bj = await b.json(); acct = bj.account || null; }
+          if (!acct) { const a2 = await fetch('/api/account', { credentials: 'include' }); if (a2.ok) acct = await a2.json(); }
+          if (acct) out.email = acct.email_address || acct.email || null;
+        } catch (e) {}
+        return out;
       ''',
     );
-    final plan = (data is Map) ? data['plan'] as String? : null;
-    return [if (plan != null) ParsedMetric('plan', textValue: plan)];
+    if (data is! Map) return const [];
+    final billing = data['billing'] as String?;
+    final caps = (data['caps'] as String?) ?? '';
+    final email = data['email'] as String?;
+    return [
+      ParsedMetric('plan', textValue: _cleanPlan(billing, caps)),
+      if (email != null && email.isNotEmpty) ParsedMetric('account', textValue: email),
+    ];
+  }
+
+  String _cleanPlan(String? billing, String caps) {
+    final c = caps.toLowerCase();
+    if (c.contains('claude_max') || c.contains('raven')) return 'Max';
+    if (c.contains('claude_pro')) return 'Pro';
+    if (billing == 'stripe_subscription') return 'Subscription';
+    return billing ?? 'Subscription';
   }
 }
 
