@@ -1,0 +1,42 @@
+name: build_ios
+
+# iOS builds need a macOS runner. This produces an UNSIGNED build to verify the
+# Flutter app compiles for iOS. An installable IPA needs Apple code signing.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+
+      - name: Regenerate iOS platform files
+        run: flutter create --org com.example --project-name ai_usage --platforms=ios .
+
+      - name: Set iOS deployment target
+        run: sed -i '' "s|# platform :ios, '12.0'|platform :ios, '13.0'|" ios/Podfile || true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build unsigned iOS app
+        run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned .ipa
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -qr "$GITHUB_WORKSPACE/ai_usage_unsigned.ipa" Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ai_usage_ios_unsigned
+          path: ai_usage_unsigned.ipa
