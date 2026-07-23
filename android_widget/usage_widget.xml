@@ -12,6 +12,19 @@
         android:adjustViewBounds="true"
         android:contentDescription="AI usage" />
 
+    <TextView
+        android:id="@+id/widget_footer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="18dp"
+        android:layout_marginBottom="12dp"
+        android:textSize="11sp"
+        android:textColor="#888888"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="" />
+
     <ImageView
         android:id="@+id/widget_refresh"
         android:layout_width="30dp"

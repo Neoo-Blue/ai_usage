@@ -159,7 +159,7 @@ Widget buildWidgetCanvas({
         borderRadius: BorderRadius.circular(s.radius),
         border: s.border,
       ),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -219,13 +219,14 @@ Widget _barRow(_Style s, UsageBarData b) {
         height: s.striped ? 12 : 9,
         child: CustomPaint(painter: _BarPainter(s, (b.pct / 100).clamp(0.0, 1.0))),
       ),
-      if (b.reset.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Text(b.reset, style: TextStyle(color: s.subtitle, fontSize: 9, fontFamily: s.font)),
-        ),
     ],
   );
+}
+
+// The theme's muted color, as an ARGB hex string, for the native footer text.
+String footerColorHex(WidgetTheme t) {
+  final c = _styleFor(t).subtitle;
+  return '#${(c.value & 0xFFFFFFFF).toRadixString(16).padLeft(8, '0').toUpperCase()}';
 }
 
 class _BarPainter extends CustomPainter {

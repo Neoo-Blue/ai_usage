@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:home_widget/home_widget.dart';
 
@@ -30,6 +32,7 @@ Future<void> pushWidgetSnapshot(String widgetId) async {
     var title = 'AI Usage';
     String? subtitle = 'Open the app to connect';
     final bars = <UsageBarData>[];
+    final resets = <Map<String, String>>[]; // {l: short label, t: iso} for the live footer
 
     if (account != null) {
       final metrics = await Db.instance.metricsFor(account.id);
@@ -41,19 +44,25 @@ Future<void> pushWidgetSnapshot(String widgetId) async {
         WidgetHeaderMode.plan => plan != null ? 'plan: $plan' : null,
         WidgetHeaderMode.nickname => null,
       };
-      void add(String label, String usedKey, String resetKey) {
+      void add(String label, String short, String usedKey, String resetKey) {
         final pct = _num(metrics, usedKey);
         if (pct == null) return;
-        bars.add(UsageBarData(label, pct, resetLabel(_text(metrics, resetKey))));
+        bars.add(UsageBarData(label, pct, ''));
+        final iso = _text(metrics, resetKey);
+        if (iso != null && iso.isNotEmpty) resets.add({'l': short, 't': iso});
       }
 
-      add('Current session', 'session_used', 'session_resets_at');
-      add('Weekly, all models', 'weekly_used', 'weekly_resets_at');
+      add('Current session', 'Session', 'session_used', 'session_resets_at');
+      add('Weekly, all models', 'Weekly', 'weekly_used', 'weekly_resets_at');
       for (var i = 0; i < 4; i++) {
         final pct = _num(metrics, 'model${i}_used');
         if (pct == null) break;
         final label = _text(metrics, 'model${i}_label') ?? 'Weekly';
-        bars.add(UsageBarData(label, pct, resetLabel(_text(metrics, 'model${i}_resets_at'))));
+        bars.add(UsageBarData(label, pct, ''));
+        final iso = _text(metrics, 'model${i}_resets_at');
+        if (iso != null && iso.isNotEmpty) {
+          resets.add({'l': label.replaceFirst('Weekly, ', ''), 't': iso});
+        }
       }
       if (bars.isEmpty) subtitle ??= (plan != null ? 'plan: $plan' : 'Tap sync for usage');
     }
@@ -69,13 +78,15 @@ Future<void> pushWidgetSnapshot(String widgetId) async {
     final hStr = await HomeWidget.getWidgetData<String>('widget_${widgetId}_h');
     final hDp = double.tryParse(hStr ?? '');
     if (hDp != null && hDp > 0 && bars.isNotEmpty) {
-      final capacity = ((hDp - 44) / 46).floor().clamp(1, bars.length).toInt();
+      final capacity = ((hDp - 52) / 44).floor().clamp(1, bars.length).toInt();
       if (capacity < bars.length) shown = bars.sublist(0, capacity);
     }
 
     final hasSub = subtitle != null && subtitle.isNotEmpty;
-    final height = 60.0 + (hasSub ? 14 : 0) + (shown.isEmpty ? 26 : shown.length * 52);
+    final height = 78.0 + (hasSub ? 14 : 0) + (shown.isEmpty ? 26 : shown.length * 44);
 
+    await HomeWidget.saveWidgetData('widget_${widgetId}_resets', jsonEncode(resets));
+    await HomeWidget.saveWidgetData('widget_${widgetId}_footcolor', footerColorHex(cfg.theme));
     await HomeWidget.renderFlutterWidget(
       buildWidgetCanvas(theme: cfg.theme, title: title, subtitle: subtitle, bars: shown),
       key: 'widget_${widgetId}_img',
